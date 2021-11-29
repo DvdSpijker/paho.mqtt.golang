@@ -29,10 +29,12 @@ import (
 // before reconnecting. It should return the current username and password.
 type CredentialsProvider func() (username string, password string)
 
-// MessageHandler is a callback type which can be set to be
+// MessageHandler is an interface type which can be set to be
 // executed upon the arrival of messages published to topics
 // to which the client is subscribed.
-type MessageHandler func(Client, Message)
+type MessageHandler interface {
+	HandleMessage(Client, Message)
+}
 
 // ConnectionLostHandler is a callback type which can be set to be
 // executed upon an unintended disconnection from the MQTT broker.

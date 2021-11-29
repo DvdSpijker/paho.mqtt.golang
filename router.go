@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/DvdSpijker/paho.mqtt.golang/packets"
 )
 
 // route is a type which associates MQTT Topic strings with a
@@ -181,7 +181,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 						hd := e.Value.(*route).callback
 						wg.Add(1)
 						go func() {
-							hd(client, m)
+							hd.HandleMessage(client, m)
 							m.Ack()
 							wg.Done()
 						}()
@@ -196,7 +196,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 					} else {
 						wg.Add(1)
 						go func() {
-							r.defaultHandler(client, m)
+							r.defaultHandler.HandleMessage(client, m)
 							m.Ack()
 							wg.Done()
 						}()
@@ -207,7 +207,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 			}
 			r.RUnlock()
 			for _, handler := range handlers {
-				handler(client, m)
+				handler.HandleMessage(client, m) //TODO: Add context.
 				m.Ack()
 			}
 			// DEBUG.Println(ROU, "matchAndDispatch handled message")

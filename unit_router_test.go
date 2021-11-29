@@ -18,8 +18,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/DvdSpijker/paho.mqtt.golang/packets"
 )
+
+type UtMessageHandler struct {
+	called chan bool
+}
+
+func NewUtMessageHandler() *UtMessageHandler {
+	return &UtMessageHandler{
+		called: make(chan bool),
+	}
+}
+
+func (th *UtMessageHandler) HandleMessage(client Client,
+	msg Message) {
+	
+	th.called <-true
+}
 
 func Test_newRouter(t *testing.T) {
 	router := newRouter()
@@ -33,9 +49,7 @@ func Test_newRouter(t *testing.T) {
 
 func Test_AddRoute(t *testing.T) {
 	router := newRouter()
-	cb := func(client Client, msg Message) {
-	}
-	router.addRoute("/alpha", cb)
+	router.addRoute("/alpha", NewUtMessageHandler())
 
 	if router.routes.Len() != 1 {
 		t.Fatalf("router.routes was wrong")
@@ -44,10 +58,9 @@ func Test_AddRoute(t *testing.T) {
 
 func Test_AddRoute_Wildcards(t *testing.T) {
 	router := newRouter()
-	cb := func(client Client, msg Message) {
-	}
-	router.addRoute("#", cb)
-	router.addRoute("topic1", cb)
+	handler := NewUtMessageHandler()
+	router.addRoute("#", handler)
+	router.addRoute("topic1", handler)
 
 	if router.routes.Len() != 2 {
 		t.Fatalf("addRoute should only override routes on exact topic match")
@@ -56,10 +69,10 @@ func Test_AddRoute_Wildcards(t *testing.T) {
 
 func Test_DeleteRoute_Wildcards(t *testing.T) {
 	router := newRouter()
-	cb := func(client Client, msg Message) {
-	}
-	router.addRoute("#", cb)
-	router.addRoute("topic1", cb)
+	handler := NewUtMessageHandler()
+
+	router.addRoute("#", handler)
+	router.addRoute("topic1", handler)
 	router.deleteRoute("topic1")
 
 	expected := "#"
@@ -278,12 +291,7 @@ func Test_match(t *testing.T) {
 }
 
 func Test_MatchAndDispatch(t *testing.T) {
-	calledback := make(chan bool)
-
-	cb := func(c Client, m Message) {
-		calledback <- true
-	}
-
+	handler := NewUtMessageHandler()
 	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pub.Qos = 2
 	pub.TopicName = "a"
@@ -292,7 +300,7 @@ func Test_MatchAndDispatch(t *testing.T) {
 	msgs := make(chan *packets.PublishPacket)
 
 	router := newRouter()
-	router.addRoute("a", cb)
+	router.addRoute("a", handler)
 
 	stopped := make(chan bool)
 	go func() {
@@ -301,7 +309,7 @@ func Test_MatchAndDispatch(t *testing.T) {
 	}()
 	msgs <- pub
 
-	<-calledback
+	<-handler.called
 
 	close(msgs)
 
@@ -314,12 +322,7 @@ func Test_MatchAndDispatch(t *testing.T) {
 }
 
 func Test_SharedSubscription_MatchAndDispatch(t *testing.T) {
-	calledback := make(chan bool)
-
-	cb := func(c Client, m Message) {
-		calledback <- true
-	}
-
+	handler := NewUtMessageHandler()
 	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pub.Qos = 2
 	pub.TopicName = "a"
@@ -328,7 +331,7 @@ func Test_SharedSubscription_MatchAndDispatch(t *testing.T) {
 	msgs := make(chan *packets.PublishPacket)
 
 	router := newRouter()
-	router.addRoute("$share/az1/a", cb)
+	router.addRoute("$share/az1/a", handler)
 
 	stopped := make(chan bool)
 	go func() {
@@ -338,7 +341,7 @@ func Test_SharedSubscription_MatchAndDispatch(t *testing.T) {
 
 	msgs <- pub
 
-	<-calledback
+	<-handler.called
 
 	close(msgs)
 

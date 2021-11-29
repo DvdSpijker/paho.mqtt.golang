@@ -28,7 +28,7 @@ var (
 func init() {
 	FVTAddr := os.Getenv("TEST_FVT_ADDR")
 	if FVTAddr == "" {
-		FVTAddr = "127.0.0.1"
+		FVTAddr = "eva.gateway.joule-cloud.com"
 	}
 	FVTTCP = "tcp://" + FVTAddr + ":1883"
 	FVTSSL = "ssl://" + FVTAddr + ":8883"
