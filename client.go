@@ -511,8 +511,13 @@ func (c *client) internalConnLost(err error) {
 			} else {
 				c.setConnected(disconnected)
 			}
-			if c.options.OnConnectionLost != nil {
-				go c.options.OnConnectionLost.HandleConnectionLost(c, err)
+
+			c.optionsMu.Lock()
+			onConnLost := c.options.OnConnectionLost
+			c.optionsMu.Unlock()
+
+			if onConnLost != nil {
+				go onConnLost.HandleConnectionLost(c, err)
 			}
 			DEBUG.Println(CLI, "internalConnLost complete")
 		}()
@@ -550,8 +555,13 @@ func (c *client) startCommsWorkers(conn net.Conn, inboundFromStore <-chan packet
 
 	c.setConnected(connected)
 	DEBUG.Println(CLI, "client is connected/reconnected")
-	if c.options.OnConnect != nil {
-		go c.options.OnConnect.HandleConnect(c)
+
+	c.optionsMu.Lock()
+	onConn := c.options.OnConnect
+	c.optionsMu.Unlock()
+
+	if onConn != nil {
+		go onConn.HandleConnect(c)
 	}
 
 	// c.oboundP and c.obound need to stay active for the life of the client because, depending upon the options,
@@ -1125,4 +1135,20 @@ func (c *client) persistInbound(m packets.ControlPacket) {
 // pingRespReceived will be called by the network routines when a ping response is received
 func (c *client) pingRespReceived() {
 	atomic.StoreInt32(&c.pingOutstanding, 0)
+}
+
+// SetConnectionLostHandler will set the OnConnectionLost callback to be executed
+// in the case where the client unexpectedly loses connection with the MQTT broker.
+func (c *client) SetConnectionLostHandler(onLost ConnectionLostHandler) {
+	c.optionsMu.Lock()
+	c.options.OnConnectionLost = onLost
+	c.optionsMu.Unlock()
+}
+
+// SetOnConnectHandler sets the function to be called when the client is connected. Both
+// at initial connection time and upon automatic reconnect.
+func (c *client) SetOnConnectHandler(onConn ConnectHandler) {
+	c.optionsMu.Lock()
+	c.options.OnConnect = onConn
+	c.optionsMu.Unlock()
 }
