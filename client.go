@@ -110,6 +110,10 @@ type Client interface {
 	// OptionsReader returns a ClientOptionsReader which is a copy of the clientoptions
 	// in use by the client.
 	OptionsReader() ClientOptionsReader
+	// Sets the ConnectionLostHandler.
+	SetConnectionLostHandler(onLost ConnectionLostHandler)
+	// Sets the ConnectHandler.
+	SetConnectHandler(onConn ConnectHandler)
 }
 
 // client implements the Client interface
@@ -1147,7 +1151,7 @@ func (c *client) SetConnectionLostHandler(onLost ConnectionLostHandler) {
 
 // SetOnConnectHandler sets the function to be called when the client is connected. Both
 // at initial connection time and upon automatic reconnect.
-func (c *client) SetOnConnectHandler(onConn ConnectHandler) {
+func (c *client) SetConnectHandler(onConn ConnectHandler) {
 	c.optionsMu.Lock()
 	c.options.OnConnect = onConn
 	c.optionsMu.Unlock()
