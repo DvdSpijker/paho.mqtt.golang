@@ -112,11 +112,15 @@ func Test_TLSConfig(t *testing.T) {
 	}
 }
 
+type panicConnectionLostHandler struct {
+}
+
+func (h *panicConnectionLostHandler) HandleConnectionLost(client Client, err error) {
+	panic(err)
+}
+
 func Test_OnConnectionLost(t *testing.T) {
-	onconnlost := func(client Client, err error) {
-		panic(err)
-	}
-	o := NewClientOptions().SetConnectionLostHandler(onconnlost)
+	o := NewClientOptions().SetConnectionLostHandler(&panicConnectionLostHandler{})
 
 	c := NewClient(o).(*client)
 

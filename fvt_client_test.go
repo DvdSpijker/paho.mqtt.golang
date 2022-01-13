@@ -26,6 +26,24 @@ import (
 	"github.com/DvdSpijker/paho.mqtt.golang/packets"
 )
 
+type connectionLostHandler struct {
+	channelToClose chan struct{}
+}
+
+func (h *connectionLostHandler) HandleConnectionLost(client Client, err error) {
+	fmt.Println("Connection Lost!")
+	if h.channelToClose != nil {
+		close(h.channelToClose)
+	}
+}
+
+type connectHandler struct {
+}
+
+func (h *connectHandler) HandleConnect(client Client) {
+	fmt.Println("Connected!")
+}
+
 func Test_Start(t *testing.T) {
 	ops := NewClientOptions().SetClientID("Start").AddBroker(FVTTCP)
 	c := NewClient(ops)
@@ -268,9 +286,7 @@ func Test_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("will-giver")
 	sops.SetWill("/wills", "good-byte!", 0, false)
-	sops.SetConnectionLostHandler(func(client Client, err error) {
-		fmt.Println("OnConnectionLost!")
-	})
+	sops.SetConnectionLostHandler(&connectionLostHandler{channelToClose: nil})
 	sops.SetAutoReconnect(false)
 	c := NewClient(sops).(*client)
 
@@ -308,9 +324,7 @@ func Test_CleanSession(t *testing.T) {
 
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("clsn-sender")
-	sops.SetConnectionLostHandler(func(client Client, err error) {
-		fmt.Println("OnConnectionLost!")
-	})
+	sops.SetConnectionLostHandler(&connectionLostHandler{channelToClose: nil})
 	sops.SetAutoReconnect(false)
 	c := NewClient(sops).(*client)
 
@@ -382,8 +396,7 @@ func Test_Binary_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("will-giver")
 	sops.SetBinaryWill("/wills", will, 0, false)
-	sops.SetConnectionLostHandler(func(client Client, err error) {
-	})
+	sops.SetConnectionLostHandler(&connectionLostHandler{channelToClose: nil})
 	sops.SetAutoReconnect(false)
 	c := NewClient(sops).(*client)
 
@@ -1064,9 +1077,7 @@ func Test_ping1_idle5(t *testing.T) {
 	ops := NewClientOptions()
 	ops.AddBroker(FVTTCP)
 	ops.SetClientID("p3i10")
-	ops.SetConnectionLostHandler(func(c Client, err error) {
-		t.Fatalf("Connection-lost handler was called: %s", err)
-	})
+	ops.SetConnectionLostHandler(&connectionLostHandler{channelToClose: nil})
 	ops.SetKeepAlive(4 * time.Second)
 
 	c := NewClient(ops)
@@ -1083,9 +1094,7 @@ func Test_autoreconnect(t *testing.T) {
 	ops.AddBroker(FVTTCP)
 	ops.SetClientID("auto_reconnect")
 	ops.SetAutoReconnect(true)
-	ops.SetOnConnectHandler(func(c Client) {
-		t.Log("Connected")
-	})
+	ops.SetOnConnectHandler(&connectHandler{})
 	ops.SetKeepAlive(2 * time.Second)
 
 	c := NewClient(ops)
@@ -1454,7 +1463,7 @@ func Test_DisconnectWhileProcessingIncomingPublish(t *testing.T) {
 	sops.SetClientID("dwpip-sub")
 	// We need to know when the subscriber has lost its connection (this indicates that the deadlock has not occured)
 	sDisconnected := make(chan struct{})
-	sops.SetConnectionLostHandler(func(Client, error) { close(sDisconnected) })
+	sops.SetConnectionLostHandler(&connectionLostHandler{channelToClose: sDisconnected})
 
 	msgReceived := make(chan struct{})
 	// var oneMsgReceived sync.Once
@@ -1530,3 +1539,4 @@ func Test_DisconnectWhileProcessingIncomingPublish(t *testing.T) {
 	}
 	p.Disconnect(250) // Close publisher
 }
+

@@ -40,12 +40,20 @@ type MessageHandler interface {
 // executed upon an unintended disconnection from the MQTT broker.
 // Disconnects caused by calling Disconnect or ForceDisconnect will
 // not cause an OnConnectionLost callback to execute.
-type ConnectionLostHandler func(Client, error)
+// type ConnectionLostHandler func(Client, error)
+
+type ConnectionLostHandler interface {
+	HandleConnectionLost(Client, error)
+}
 
 // OnConnectHandler is a callback that is called when the client
 // state changes from unconnected/disconnected to connected. Both
 // at initial connection and on reconnection
-type OnConnectHandler func(Client)
+//type OnConnectHandler func(Client)
+
+type ConnectHandler interface {
+	HandleConnect(Client)
+}
 
 // ReconnectHandler is invoked prior to reconnecting after
 // the initial connection is lost
@@ -81,7 +89,7 @@ type ClientOptions struct {
 	ConnectRetry            bool
 	Store                   Store
 	DefaultPublishHandler   MessageHandler
-	OnConnect               OnConnectHandler
+	OnConnect               ConnectHandler
 	OnConnectionLost        ConnectionLostHandler
 	OnReconnecting          ReconnectHandler
 	OnConnectAttempt        ConnectionAttemptHandler
@@ -125,7 +133,7 @@ func NewClientOptions() *ClientOptions {
 		ConnectRetry:            false,
 		Store:                   nil,
 		OnConnect:               nil,
-		OnConnectionLost:        DefaultConnectionLostHandler,
+		OnConnectionLost:        &defaultConnectionLostHandler{},
 		OnConnectAttempt:        nil,
 		WriteTimeout:            0, // 0 represents timeout disabled
 		ResumeSubs:              false,
@@ -309,7 +317,7 @@ func (o *ClientOptions) SetDefaultPublishHandler(defaultHandler MessageHandler) 
 
 // SetOnConnectHandler sets the function to be called when the client is connected. Both
 // at initial connection time and upon automatic reconnect.
-func (o *ClientOptions) SetOnConnectHandler(onConn OnConnectHandler) *ClientOptions {
+func (o *ClientOptions) SetOnConnectHandler(onConn ConnectHandler) *ClientOptions {
 	o.OnConnect = onConn
 	return o
 }

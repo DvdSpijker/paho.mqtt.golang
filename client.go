@@ -512,7 +512,7 @@ func (c *client) internalConnLost(err error) {
 				c.setConnected(disconnected)
 			}
 			if c.options.OnConnectionLost != nil {
-				go c.options.OnConnectionLost(c, err)
+				go c.options.OnConnectionLost.HandleConnectionLost(c, err)
 			}
 			DEBUG.Println(CLI, "internalConnLost complete")
 		}()
@@ -551,7 +551,7 @@ func (c *client) startCommsWorkers(conn net.Conn, inboundFromStore <-chan packet
 	c.setConnected(connected)
 	DEBUG.Println(CLI, "client is connected/reconnected")
 	if c.options.OnConnect != nil {
-		go c.options.OnConnect(c)
+		go c.options.OnConnect.HandleConnect(c)
 	}
 
 	// c.oboundP and c.obound need to stay active for the life of the client because, depending upon the options,
@@ -779,9 +779,7 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 		topic = strings.Join(strings.Split(topic, "/")[2:], "/")
 	}
 
-	if strings.HasPrefix(topic, "$queue/") {
-		topic = strings.TrimPrefix(topic, "$queue/")
-	}
+	topic = strings.TrimPrefix(topic, "$queue/")
 
 	if callback != nil {
 		c.msgRouter.addRoute(topic, callback)
@@ -1085,9 +1083,12 @@ func (c *client) OptionsReader() ClientOptionsReader {
 	return r
 }
 
+type defaultConnectionLostHandler struct {
+}
+
 // DefaultConnectionLostHandler is a definition of a function that simply
 // reports to the DEBUG log the reason for the client losing a connection.
-func DefaultConnectionLostHandler(client Client, reason error) {
+func (h *defaultConnectionLostHandler) HandleConnectionLost(client Client, reason error) {
 	DEBUG.Println("Connection lost:", reason.Error())
 }
 
